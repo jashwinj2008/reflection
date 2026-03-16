@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Medieval Room</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0d0805;
+            color: #fff;
+            font-family: Georgia, serif;
+        }
+        canvas {
+            display: block;
+        }
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s ease;
+            z-index: 100;
+        }
+        #loading-text {
+            font-style: italic;
+            color: rgba(212, 168, 67, 0.8);
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+        }
+        #progress-container {
+            width: 200px;
+            height: 2px;
+            background: rgba(212, 168, 67, 0.2);
+        }
+        #loadbar {
+            width: 0%;
+            height: 100%;
+            background: #d4a843;
+            transition: width 0.3s ease;
+        }
+        #error-message {
+            color: #ff4444;
+            display: none;
+        }
+        #backBtn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #d4a843;
+            color: #d4a843;
+            font-family: Georgia, serif;
+            font-style: italic;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+        }
+        #hint {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffe87c;
+            font-style: italic;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            pointer-events: none;
+            animation: pulse 2s infinite ease-in-out;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 165, 0, 0.6);
+        }
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1.0; }
+            100% { opacity: 0.4; }
+        }
+
+        /* Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel+Decorative&display=swap');
+
+        #bookUI {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          display: none;
+          flex-direction: row;
+          width: 820px;
+          height: 520px;
+          max-width: 96vw;
+          max-height: 90vh;
+          z-index: 20;
+          filter: drop-shadow(0 20px 60px rgba(0,0,0,0.9));
+          animation: bookOpen 0.5s ease-out forwards;
+        }
+
+        @keyframes bookOpen {
+          from {
+            transform: translate(-50%,-50%) scale(0.85);
+            opacity: 0;
+          }
+          to {
+            transform: translate(-50%,-50%) scale(1);
+            opacity: 1;
+          }
+        }
+
+        #leftPage, #rightPage {
+          width: 50%;
+          height: 100%;
+          padding: 40px 36px;
+          box-sizing: border-box;
+          position: relative;
+          background: linear-gradient(
+            135deg,
+            #1e1713 0%,
+            #140f0c 40%,
+            #0d0907 100%
+          );
+          font-family: 'IM Fell English', Georgia, serif;
+          overflow: hidden;
+        }
+
+        /* Aged edge effect on pages */
+        #leftPage::before, #rightPage::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(
+            ellipse at center,
+            transparent 55%,
+            rgba(0,0,0,0.5) 100%
+          );
+          pointer-events: none;
+        }
+
+        #leftPage {
+          border-radius: 4px 0 0 4px;
+          border-right: none;
+          box-shadow: inset -6px 0 15px rgba(0,0,0,0.9);
+        }
+
+        #rightPage {
+          border-radius: 0 4px 4px 0;
+          border-left: none;
+          box-shadow: inset 6px 0 15px rgba(0,0,0,0.9);
+        }
+
+        /* Book spine */
+        #bookSpine {
+          width: 18px;
+          min-width: 18px;
+          height: 100%;
+          background: linear-gradient(
+            to right,
+            #050302,
+            #120a05,
+            #0a0503
+          );
+          box-shadow:
+            2px 0 8px rgba(0,0,0,0.8),
+            -2px 0 8px rgba(0,0,0,0.8);
+        }
+
+        /* Page corner decorations */
+        #leftPageCornerTL,
+        #leftPageCornerBL,
+        #rightPageCornerTR,
+        #rightPageCornerBR {
+          position: absolute;
+          width: 28px;
+          height: 28px;
+          border-color: rgba(212,168,67,0.3);
+          border-style: solid;
+        }
+        #leftPageCornerTL {
+          top: 16px; left: 16px;
+          border-width: 2px 0 0 2px;
+        }
+        #leftPageCornerBL {
+          bottom: 16px; left: 16px;
+          border-width: 0 0 2px 2px;
+        }
+        #rightPageCornerTR {
+          top: 16px; right: 16px;
+          border-width: 2px 2px 0 0;
+        }
+        #rightPageCornerBR {
+          bottom: 16px; right: 16px;
+          border-width: 0 2px 2px 0;
+        }
+
+        /* Left page — image area */
+        #pageImage {
+          width: 100%;
+          height: 72%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(212,168,67,0.03);
+          border: 1px solid rgba(212,168,67,0.2);
+          border-radius: 4px;
+          overflow: hidden;
+          margin-bottom: 12px;
+        }
+
+        #pageImagePlaceholder {
+          font-size: 3rem;
+          color: rgba(212,168,67,0.3);
+        }
+
+        #pageImg {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          filter: sepia(30%) brightness(0.85);
+          border-radius: 4px;
+        }
+
+        #leftCaption {
+          text-align: center;
+          font-style: italic;
+          font-size: 0.8rem;
+          color: rgba(212,168,67,0.6);
+          line-height: 1.4;
+          padding: 0 10px;
+        }
+
+        /* Right page — content area */
+        #rightPageOrnament {
+          text-align: center;
+          font-size: 1.4rem;
+          color: rgba(212,168,67,0.6);
+          margin-bottom: 8px;
+        }
+
+        #rightPageTitle {
+          font-family: 'Cinzel Decorative', Georgia, serif;
+          font-size: 0.95rem;
+          color: #d4a843;
+          text-align: center;
+          margin-bottom: 10px;
+          line-height: 1.4;
+        }
+
+        #rightPageDivider {
+          height: 1px;
+          background: linear-gradient(
+            to right,
+            transparent,
+            rgba(212,168,67,0.5),
+            transparent
+          );
+          margin: 8px 0 14px 0;
+        }
+
+        #rightPageBody {
+          font-size: 0.88rem;
+          line-height: 1.95;
+          color: #c9b493;
+          text-align: justify;
+          min-height: 220px;
+          max-height: 260px;
+          overflow-y: auto;
+          padding-right: 5px;
+        }
+        
+        /* Custom scrollbar for book text */
+        #rightPageBody::-webkit-scrollbar {
+          width: 5px;
+        }
+        #rightPageBody::-webkit-scrollbar-track {
+          background: rgba(212,168,67,0.05);
+          border-radius: 4px;
+        }
+        #rightPageBody::-webkit-scrollbar-thumb {
+          background: rgba(212,168,67,0.4);
+          border-radius: 4px;
+        }
+        #rightPageBody::-webkit-scrollbar-thumb:hover {
+          background: rgba(212,168,67,0.7);
+        }
+
+        /* Letter imprint span */
+        #rightPageBody span {
+          transition: color 0.8s ease,
+            text-shadow 0.8s ease;
+        }
+
+        #rightPageBottom {
+          position: absolute;
+          bottom: 28px;
+          left: 36px;
+          right: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-top: 1px solid rgba(212,168,67,0.2);
+          padding-top: 12px;
+        }
+
+        #prevBtn, #nextBtn {
+          background: transparent;
+          border: 1px solid rgba(212,168,67,0.4);
+          color: #d4a843;
+          font-family: 'IM Fell English', Georgia, serif;
+          font-style: italic;
+          font-size: 0.78rem;
+          padding: 5px 12px;
+          cursor: pointer;
+          border-radius: 2px;
+          transition: all 0.3s;
+        }
+        #prevBtn:hover, #nextBtn:hover {
+          background: rgba(212,168,67,0.1);
+          border-color: #f7d678;
+          color: #f7d678;
+        }
+        #prevBtn:disabled, #nextBtn:disabled {
+          opacity: 0.2;
+          cursor: not-allowed;
+        }
+
+        #pgCount {
+          font-size: 0.72rem;
+          color: rgba(212,168,67,0.5);
+          font-style: italic;
+          letter-spacing: 1px;
+          font-family: Georgia, serif;
+        }
+
+        /* Page numbers */
+        #leftPageNumber, #rightPageNumber {
+          position: absolute;
+          bottom: 14px;
+          font-size: 0.72rem;
+          color: rgba(212,168,67,0.4);
+          font-style: italic;
+          font-family: Georgia, serif;
+        }
+        #leftPageNumber { left: 50%; transform: translateX(-50%); }
+        #rightPageNumber { right: 50%; transform: translateX(50%); }
+
+        /* Page turn animation */
+        @keyframes pageTurnOut {
+          from { opacity:1; transform:translateX(0); }
+          to   { opacity:0; transform:translateX(-30px); }
+        }
+        @keyframes pageTurnIn {
+          from { opacity:0; transform:translateX(30px); }
+          to   { opacity:1; transform:translateX(0); }
+        }
+        .pageOut {
+          animation: pageTurnOut 0.25s ease forwards;
+        }
+        .pageIn {
+          animation: pageTurnIn 0.25s ease forwards;
+        }
+
+        /* Overlay behind book UI */
+        #bookOverlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.7);
+          z-index: 19;
+          display: none;
+          backdrop-filter: blur(3px);
+        }
+
+        #closeBookBtn {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 30px;
+            height: 30px;
+            background: #3d1a06;
+            color: #f8ecd4;
+            border-radius: 50%;
+            border: 2px solid #f8ecd4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 21;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+        #closeBookBtn:hover {
+            transform: scale(1.1);
+            background: #5a2e10;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+<audio id="bgMusic" loop><source src="assets/bg-music.mp3" type="audio/mpeg"></audio>
+
+    <div id="loading">
+        <div id="loading-text">opening..</div>
+        <div id="progress-container">
+            <div id="loadbar"></div>
+        </div>
+        <div id="error-message">Error loading scene. Please try again.</div>
+    </div>
+
+    <div id="backBtn">← Back</div>
+    <div id="hint">✦ Click the book to begin ✦</div>
+
+    <div id="bookOverlay"></div>
+
+    <audio id="bgMusic" src="./assets/bg-music.mp3" loop style="display: none;"></audio>
+
+    <div id="bookUI">
+        <div id="closeBookBtn">✖</div>
+
+      <!-- Left page — image side -->
+      <div id="leftPage">
+        <div id="leftPageCornerTL"></div>
+        <div id="leftPageCornerBL"></div>
+        <div id="pageImage">
+          <div id="pageImagePlaceholder">✦</div>
+          <img id="pageImg" src="" alt=""
+            style="display:none;"/>
+        </div>
+        <div id="leftCaption"></div>
+        <div id="leftPageNumber">i</div>
+      </div>
+
+      <!-- Book spine -->
+      <div id="bookSpine"></div>
+
+      <!-- Right page — content side -->
+      <div id="rightPage">
+        <div id="rightPageCornerTR"></div>
+        <div id="rightPageCornerBR"></div>
+        <div id="rightPageOrnament"></div>
+        <div id="rightPageTitle"></div>
+        <div id="rightPageDivider"></div>
+        <div id="rightPageBody"></div>
+        <div id="rightPageBottom">
+          <button id="prevBtn">← Previous</button>
+          <span id="pgCount">Cover</span>
+          <button id="nextBtn">Next →</button>
+        </div>
+        <div id="rightPageNumber">ii</div>
+      </div>
+
+    </div>
+
+    <script>
+        var scene, camera, renderer, controls, clock;
+        var raycaster, mouse;
+        
+        var bookObject = null;
+        var bookWorldPos = new THREE.Vector3();
+        var bookPartNames = [];
+
+        var isZoomed = false;
+        var zoomAnim = null;
+        
+        var sparkSystem, dustSystem;
+        var sparkInfo = { lastFireTime: 0 };
+
+        // State tracking for hover effect
+        var hoveredBook = false;
+        var lastIntersected = null;
+
+        var currentPage = 0;
+        var isImprinting = false;
+        var imprintTimer = null;
+
+        var pages = [
+          {
+            title: 'Entry I: Whispers of a Crew',
+            ornament: '⚜',
+            body: 'Let this record stand for whoever opens this tome. When I first stepped into this college, the waters were dead still. Honestly, I wasn\'t excited about college life at all; it felt like standard, boring routine.\n\nBut then, rumors of a crew reached me: Byte-Bash-Blitz. The Bashers. In my head, tech communities like this only existed in anime—a real squad fighting for a shared dream.\n\nBut in January 2026, when the seniors actually walked into our class and spoke, the myth became reality. I knew right then, I was looking at my Grand Line. I had to get in.',
+            image: 'bashers.png',
+            caption: 'The Byte-Bash-Blitz Community',
+            leftOrnament: '⚓'
+          },
+          {
+            title: 'Entry II: The Golden Crest',
+            ornament: '✦',
+            body: 'We were branded as "Rookies" and thrown into a 50-day trial. We had to upload our daily progress on Discord, grind through community tasks, and earn certifications.\n\nWe also had to choose a clan: Lumina, Aura 7F, Shadashtria Adepti, or Belmonts. When the Belmonts presented themselves, their Captain Basher (CB) spoke with such crazy communication skills, I was instantly sold.\n\nI raised the golden crest of the Belmonts. Every single night, from 8 PM to 9 PM, our clan gathered on Discord. The seniors weren\'t intimidating; they were genuinely kind and approachable. That was my first taste of true Nakama.',
+            image: 'belmonts.png',
+            caption: 'The Belmonts Clan',
+            leftOrnament: '🛡️'
+          },
+          {
+            title: 'Entry III: The Weekly Bash',
+            ornament: '⚡',
+            body: 'Every Saturday, we made port at the college for the Weekly Bash. Man, the vibe in that room was electric. It wasn\'t just boring tech lectures. We had wild presentations, games, live coding, and pure chaos.\n\nWeek by week, the awkwardness completely faded. We went from being quiet strangers to a loud, unstoppable family in just 50 days.\n\nSeeing everyone hype each other up, sharing their domain interests, and pushing limits... it was exactly the anime-style camaraderie I had been searching for.',
+            image: 'infront.JPG',
+            caption: 'The Weekly Bash ',
+            leftOrnament: '⚔️'
+          },
+          {
+            title: 'Entry IV: Blood and Code',
+            ornament: '⚙️',
+            body: 'You can\'t survive these waters alone. Teaming up with Vignesh, Zarif, and Michal bro, we forged a dynamic web quiz game from scratch.\n\nWe were just rookies, sharing messy code and debugging errors on the fly, but the teamwork was unreal. We pushed each other past our limits.\n\nThat project taught me that when you have a solid crew beside you, the hardest technical challenges just feel like another adventure waiting to be conquered. We proved we weren\'t just here to learn; we were here to build.',
+            image: 'game.png',
+            caption: 'Forging Our First Ship',
+            leftOrnament: '🤝'
+          },
+          {
+            title: 'Entry V: The Midnight Oil',
+            ornament: '🌙',
+            body: 'Then came my solo voyage. I poured my soul into building the "Family Safety and Monitoring System." I wanted something real, so I coded daily task trackers for kids, an SOS alert system, live GPS tracking, and automated email notifications for parents.\n\nI bound it all together using the core scripts of HTML, CSS, and JavaScript, hooking it up to Supabase for the database.\n\nSitting in the dark, staring at my laptop until the logic finally clicked—it was a brutal grind. But seeing my code actually come to life? Best feeling in the world.',
+            image: 'task.png',
+            caption: 'The Midnight Grind',
+            leftOrnament: '🕯️'
+          },
+          {
+            title: 'Entry VI: The Expanding Map',
+            ornament: '🗺️',
+            body: 'Over these 50 days, my technical map expanded like crazy. We didn\'t just stick to the basics. I dove into n8n, the ledgers of crypto and blockchain, GitHub, how Unity works, and the core commands of Linux.\n\nAnd this very 3D interactive book you\'re reading right now? I studied the basics of Blender, imported the 3D assets, and crafted this entire reflective space myself.\n\nIt was like unlocking new gears, juggling time management while mastering these arcane digital arts.',
+            image: 'team.jpg',
+            caption: 'Tech Teams',
+            leftOrnament: '🧭'
+          },
+          {
+            title: 'Entry VII: Slaying the Beast',
+            ornament: '🔥',
+            body: 'But the biggest boss fight I faced wasn\'t a bug in my code. It was the terrifying stage fear. The thought of speaking in front of a crowd used to paralyze me.\n\nBut surrounded by the Bashers, something shifted. I gripped the mic, stood up in front of the room, and finally spoke my mind. I actually did it.\n\nI\'m still improving my communication skills every day, but I’ve leveled up. I found my voice, and the fear is completely gone.',
+            image: 'confidence.jpg',
+            caption: 'Conquering the Mind',
+            leftOrnament: '👁️'
+          },
+          {
+            title: 'Entry VIII: The Navigators',
+            ornament: '🌟',
+            body: 'This logbook wouldn\'t be complete without honoring the seniors who held the lanterns for us. A massive, heartfelt shoutout to Michal bro, Andrea akka, Adhitya akka, Samuel bro, sanju bro, Geo bro.\n\nYou guys weren\'t just "bosses"; you were true mentors. You were always there to pull a rookie out of the deep end.\n\nYou corrected my mistakes with so much patience and gave me the exact motivation I needed. I stand tall today because of your guidance.',
+            image: 'hand.jpg',
+            caption: 'The moment',
+            leftOrnament: '🏮'
+          },
+          {
+            title: 'Entry IX: A Debt Unpaid',
+            ornament: '⚜',
+            body: 'The gratitude doesn\'t stop there. Falin bro, Jeshwin bro, Sriram bro, Sowmiya akka, Harshini akka and every single Basher out there—thank you from the bottom of my heart.\n\nYou gave a hesitant first-year student a seat at the grand table. You created a space where it was safe to fail, as long as we kept trying.\n\nYou are the real MVPs of my college life. You gave me my crew.',
+            image: 'group.jpg',
+            caption: 'The Community',
+            leftOrnament: '🏴‍☠️'
+          },
+          {
+            title: 'Entry X: Uncharted Waters',
+            ornament: '⌛',
+            body: 'The glass is nearly empty. Soon, the elders will evaluate every rookie\'s progress and passion to decide who earns the title of a Basher. I await my fate, but honestly, I\'ve already won the greatest treasure: this experience, this knowledge, and this family.\n\nBut... if I am on the other side somehow. If the winds carry me away to places unknown and I cannot return to this harbor... I do not know.\n\nI leave this logbook as my legacy. Let it be known I was here.\n\nfin~',
+            image: 'book.png',
+            caption: 'The Departure',
+            leftOrnament: '⏳'
+          }
+        ];
+
+        var bgMusicStarted = false;
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0d0805);
+            scene.fog = new THREE.Fog(0x0d0805, 8, 25);
+            clock = new THREE.Clock();
+
+            // Background Music Setup
+            var bgMusic = document.getElementById('bgMusic');
+            if (bgMusic) bgMusic.volume = 0.15;
+
+            // Camera
+            var aspect = window.innerWidth / window.innerHeight;
+            camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
+            camera.position.set(0, 2, 6);
+            camera.lookAt(0, 1, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Lights
+            var ambientLight = new THREE.AmbientLight(0xffffff, 0.02);
+            scene.add(ambientLight);
+
+            var candleLight = new THREE.PointLight(0xff8c00, 2.5, 12);
+            candleLight.castShadow = true;
+            scene.add(candleLight);
+            
+            var floatingCandleLight = new THREE.PointLight(0xff8c00, 1.5, 8);
+            floatingCandleLight.castShadow = true;
+            scene.add(floatingCandleLight);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Raycaster
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            renderer.domElement.addEventListener('click', onCanvasClick, false);
+            renderer.domElement.addEventListener('mousemove', onCanvasHover, false);
+            document.getElementById('backBtn').addEventListener('click', onBackClick);
+            document.getElementById('closeBookBtn').addEventListener('click', onBackClick);
+
+            // GLB Loader
+            var loader = new THREE.GLTFLoader();
+            loader.load(
+                'circlelog-scene.glb',
+                function (gltf) {
+                    scene.add(gltf.scene);
+
+                    var hideExact = ['Forest_A','Forest_B','Forest_D','highresground','fog_particle','fog','sun'];
+                    var hideRegex = /^(24K|35K|45K)(_\d+)?$/;
+                    var hideTreeMeshes = ['tree001', 'tree001_1', 'tree003', 'tree003_1'];
+                    var hideLODs = /^_[a-z0-9]{4}_/;
+
+                    gltf.scene.traverse(function(child) {
+                        var n = child.name;
+                        var nl = n.toLowerCase();
+                        if (hideExact.indexOf(n) !== -1 || hideRegex.test(n) || hideTreeMeshes.indexOf(n) !== -1 || (hideLODs.test(nl) && nl.indexOf('lod') !== -1)) {
+                            child.visible = false;
+                        }
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    bookObject = gltf.scene.getObjectByName('OpenBook');
+                    if (bookObject) {
+                        bookObject.traverse(function(child) {
+                            if (child.isMesh) {
+                                bookPartNames.push(child.name);
+                            }
+                        });
+                        bookPartNames.push('OpenBook'); // Add the parent object itself
+
+                        bookObject.getWorldPosition(bookWorldPos);
+                        var bx = bookWorldPos.x;
+                        var by = bookWorldPos.y;
+                        var bz = bookWorldPos.z;
+
+                        console.log('Book world position:', bx, by, bz);
+
+                        // --- START OF FIX ---
+
+                        // FINAL CAMERA POSITION (after intro)
+                        var finalCamPos = {
+                            x: bx - 1.5,
+                            y: by + 1.0,
+                            z: bz + 3.4
+                        };
+                        var finalLook = {
+                            x: bx - 0.8,
+                            y: by + 0.05,
+                            z: bz
+                        };
+
+                        // Set default positions for zoom out
+                        window.defaultCamPos = finalCamPos;
+                        window.defaultLook = finalLook;
+
+                        // ZOOMED-IN CAMERA POSITION
+                        window.zoomedCamPos = {
+                            x: bx,
+                            y: by + 0.6,
+                            z: bz + 0.8
+                        };
+                        window.zoomedLook = {
+                            x: bx,
+                            y: by + 0.1,
+                            z: bz - 0.1
+                        };
+
+                        // CINEMATIC INTRO ANIMATION
+                        animateCamera(
+                            { x: bx - 2.0, y: by + 3.0, z: bz + 6.0 }, // Start position
+                            finalCamPos, // End position
+                            { x: bx, y: by, z: bz }, // Initial look-at
+                            finalLook, // Final look-at
+                            3000, // Duration
+                            function() { // onComplete
+                                controls.target.copy(finalLook);
+                                controls.minDistance = 0.5;
+                                controls.maxDistance = 5;
+                                controls.update();
+                                document.getElementById('hint').style.opacity = 1;
+                            }
+                        );
+                        
+                        // --- END OF FIX ---
+
+                        window.bookPos = {x:bx, y:by, z:bz};
+                        
+                        candleLight.position.set(bx - 1.5, by + 1, bz - 0.5);
+                        // Tweak these exact X, Y, Z values to align perfectly with your GLB model's floating candle
+                        floatingCandleLight.position.set(bx - 4, by + 2, bz - 3);
+
+                    } else {
+                        console.warn('OpenBook not found!');
+                    }
+                    
+                    createDustParticles();
+                    hideLoading();
+                },
+                function (progress) {
+                    var pct = (progress.loaded / progress.total * 100).toFixed(0);
+                    updateLoading(pct);
+                },
+                function (error) {
+                    console.error('GLB load error:', error);
+                    showError();
+                }
+            );
+
+            window.addEventListener('resize', onWindowResize, false);
+            animate();
+        }
+
+        function imprintText(text, targetEl, onComplete) {
+          if(imprintTimer) clearTimeout(imprintTimer);
+          targetEl.innerHTML = '';
+          targetEl.scrollTop = 0;
+          isImprinting = true;
+          var i = 0;
+          var lines = text.split('\n');
+          var flat = [];
+          lines.forEach(function(line, li) {
+            for(var c=0; c<line.length; c++) {
+              flat.push({ch: line[c], br: false});
+            }
+            if(li < lines.length-1) {
+              flat.push({ch:'', br:true});
+            }
+          });
+          function next() {
+            if(i >= flat.length) {
+              isImprinting = false;
+              if(onComplete) onComplete();
+              return;
+            }
+            var item = flat[i];
+            var isAtBottom = (targetEl.scrollHeight - targetEl.scrollTop - targetEl.clientHeight) < 30;
+
+            if(item.br) {
+              targetEl.appendChild(
+                document.createElement('br'));
+            } else {
+              var sp = document.createElement('span');
+              sp.textContent = item.ch;
+              sp.style.color = '#D4A843';
+              sp.style.textShadow =
+                '0 0 8px rgba(212,168,67,0.9)';
+              targetEl.appendChild(sp);
+              setTimeout(function() {
+                sp.style.color = '#c9b493';
+                sp.style.textShadow = 'none';
+              }, 700);
+            }
+
+            if (isAtBottom) {
+              targetEl.scrollTop = targetEl.scrollHeight;
+            }
+
+            i++;
+            imprintTimer = setTimeout(next, 28);
+          }
+          next();
+        }
+
+        function showPage(index) {
+          currentPage = index;
+          var page = pages[index];
+
+          // Update right page
+          document.getElementById('rightPageOrnament')
+            .textContent = page.ornament || '';
+          document.getElementById('rightPageTitle')
+            .textContent = page.title;
+          document.getElementById('pgCount')
+            .textContent = index === 0
+              ? 'Cover'
+              : 'Page ' + index + ' of '
+                + (pages.length - 1);
+
+          var bodyEl = document.getElementById(
+            'rightPageBody');
+          imprintText(page.body, bodyEl, null);
+
+          // Update left page
+          var img = document.getElementById('pageImg');
+          var placeholder = document.getElementById(
+            'pageImagePlaceholder');
+
+          if(page.image && page.image !== '') {
+            img.src = page.image;
+            img.style.display = 'block';
+            placeholder.style.display = 'none';
+          } else {
+            img.style.display = 'none';
+            placeholder.style.display = 'block';
+            placeholder.textContent =
+              page.leftOrnament || '✦';
+          }
+
+          document.getElementById('leftCaption')
+            .textContent = page.caption || '';
+
+          // Page numbers
+          var lNum = index === 0
+            ? 'i' : String(index * 2 - 1);
+          var rNum = index === 0
+            ? 'ii' : String(index * 2);
+          document.getElementById('leftPageNumber')
+            .textContent = '— ' + lNum + ' —';
+          document.getElementById('rightPageNumber')
+            .textContent = '— ' + rNum + ' —';
+
+          // Button states
+          var prev = document.getElementById('prevBtn');
+          var next = document.getElementById('nextBtn');
+          prev.disabled = index <= 0;
+          next.disabled = index >= pages.length - 1;
+
+          // Page turn animation
+          var lp = document.getElementById('leftPage');
+          var rp = document.getElementById('rightPage');
+          lp.classList.remove('pageOut','pageIn');
+          rp.classList.remove('pageOut','pageIn');
+          void lp.offsetWidth;
+          lp.classList.add('pageIn');
+          rp.classList.add('pageIn');
+        }
+
+        // Button click handlers
+        document.getElementById('prevBtn')
+          .addEventListener('click', function() {
+            if(currentPage > 0) {
+              showPage(currentPage - 1);
+            }
+          });
+
+        document.getElementById('nextBtn')
+          .addEventListener('click', function() {
+            if(currentPage < pages.length - 1) {
+              showPage(currentPage + 1);
+            }
+          });
+
+        function onCanvasHover(event) {
+            if (isZoomed || !bookObject) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            var intersects = raycaster.intersectObject(bookObject, true);
+            var intersectsBook = false;
+            if (intersects.length > 0) {
+                lastIntersected = intersects[0].object;
+                if (bookPartNames.indexOf(lastIntersected.name) > -1) {
+                    intersectsBook = true;
+                }
+            }
+
+            if (intersectsBook && !hoveredBook) {
+                hoveredBook = true;
+                document.body.style.cursor = 'pointer';
+            } else if (!intersectsBook && hoveredBook) {
+                hoveredBook = false;
+                document.body.style.cursor = 'default';
+            }
+        }
+
+        function onCanvasClick(event) {
+            // First interaction triggers music
+            if (!bgMusicStarted) {
+                var bgMusic = document.getElementById('bgMusic');
+                if (bgMusic) {
+                    bgMusic.play().catch(function(e) { console.warn("Audio play failed on click", e); });
+                }
+                bgMusicStarted = true;
+            }
+
+            if (isZoomed || !bookObject) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            var intersects = raycaster.intersectObject(bookObject, true);
+            
+            if (intersects.length > 0 && bookPartNames.indexOf(intersects[0].object.name) > -1) {
+                isZoomed = true;
+var bgMusic = document.getElementById('bgMusic');
+if (bgMusic && bgMusic.paused) {
+    bgMusic.volume = 0.3; // 30% volume for atmospheric background
+    bgMusic.play().catch(function(error) {
+        console.log("Audio play failed:", error);
+    });
+}
+                controls.enabled = false;
+                document.getElementById('hint').style.display = 'none';
+                document.body.style.cursor = 'default';
+                
+                var clickPos = intersects[0].point;
+                fireParticles(clickPos.x, clickPos.y, clickPos.z);
+                
+                animateCamera(
+                    window.defaultCamPos, window.zoomedCamPos,
+                    window.defaultLook, window.zoomedLook,
+                    1500,
+                    function() {
+                        document.getElementById('backBtn').style.display = 'block';
+                        document.getElementById('bookOverlay').style.display = 'block';
+                        document.getElementById('bookUI').style.display = 'flex';
+                        showPage(0);
+                    }
+                );
+            }
+        }
+
+        function onBackClick() {
+            if (!isZoomed || zoomAnim) return; // Safety check
+            
+            document.getElementById('backBtn').style.display = 'none';
+            document.getElementById('bookOverlay').style.display = 'none';
+            document.getElementById('bookUI').style.display = 'none';
+            if(imprintTimer) clearTimeout(imprintTimer);
+            
+            animateCamera(
+                window.zoomedCamPos, window.defaultCamPos,
+                window.zoomedLook, window.defaultLook,
+                1500,
+                function() {
+                    isZoomed = false;
+                    controls.enabled = true;
+                    document.getElementById('hint').style.display = 'block';
+                }
+            );
+        }
+
+        function animateCamera(fromPos, toPos, fromLook, toLook, duration, onComplete) {
+            var start = performance.now();
+            function step() {
+                var elapsed = performance.now() - start;
+                var t = Math.min(elapsed / duration, 1);
+                var e = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+                
+                camera.position.set(
+                    fromPos.x + (toPos.x - fromPos.x) * e,
+                    fromPos.y + (toPos.y - fromPos.y) * e,
+                    fromPos.z + (toPos.z - fromPos.z) * e
+                );
+                
+                var lx = fromLook.x + (toLook.x - fromLook.x) * e;
+                var ly = fromLook.y + (toLook.y - fromLook.y) * e;
+                var lz = fromLook.z + (toLook.z - fromLook.z) * e;
+                camera.lookAt(lx, ly, lz);
+                controls.target.set(lx, ly, lz);
+
+                if (t < 1) {
+                    zoomAnim = requestAnimationFrame(step);
+                } else {
+                    zoomAnim = null;
+                    if (onComplete) onComplete();
+                }
+            }
+            if (zoomAnim) cancelAnimationFrame(zoomAnim);
+            zoomAnim = requestAnimationFrame(step);
+        }
+
+        function createSparkParticles() {
+            var geometry = new THREE.BufferGeometry();
+            var positions = new Float32Array(100 * 3);
+            var velocities = new Float32Array(100 * 3);
+            var starts = new Float32Array(100);
+
+            for (var i = 0; i < 100; i++) {
+                positions[i * 3] = 0;
+                positions[i * 3 + 1] = 0;
+                positions[i * 3 + 2] = 0;
+                velocities[i * 3] = (Math.random() - 0.5) * 0.8;
+                velocities[i * 3 + 1] = Math.random() * 1.5 + 0.2;
+                velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.8;
+                starts[i] = -1; // Initially inactive
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+            geometry.setAttribute('startTime', new THREE.BufferAttribute(starts, 1));
+
+            var material = new THREE.PointsMaterial({
+                color: 0xffe580,
+                size: 0.05,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            sparkSystem = new THREE.Points(geometry, material);
+            sparkSystem.frustumCulled = false;
+            scene.add(sparkSystem);
+        }
+
+        function fireParticles(x, y, z) {
+            var now = clock.getElapsedTime();
+            if (now - sparkInfo.lastFireTime < 0.2) return; // Debounce
+            sparkInfo.lastFireTime = now;
+
+            var positions = sparkSystem.geometry.attributes.position.array;
+            var starts = sparkSystem.geometry.attributes.startTime.array;
+            var count = 0;
+            for (var i = 0; i < starts.length && count < 30; i++) {
+                if (starts[i] < 0) { // Find an inactive particle
+                    starts[i] = now;
+                    positions[i * 3] = x;
+                    positions[i * 3 + 1] = y;
+                    positions[i * 3 + 2] = z;
+                    count++;
+                }
+            }
+            sparkSystem.geometry.attributes.startTime.needsUpdate = true;
+            sparkSystem.geometry.attributes.position.needsUpdate = true;
+        }
+
+        function updateSparkParticles() {
+            if (!sparkSystem) return;
+            var now = clock.getElapsedTime();
+            var positions = sparkSystem.geometry.attributes.position.array;
+            var velocities = sparkSystem.geometry.attributes.velocity.array;
+            var starts = sparkSystem.geometry.attributes.startTime.array;
+            var gravity = -1.8;
+
+            for (var i = 0; i < starts.length; i++) {
+                if (starts[i] >= 0) {
+                    var life = now - starts[i];
+                    if (life > 1.0) {
+                        starts[i] = -1; // Deactivate
+                        continue;
+                    }
+                    var t = life;
+                    positions[i * 3 + 1] += velocities[i * 3 + 1] * 0.01 + 0.5 * gravity * t * t;
+                    positions[i * 3] += velocities[i * 3] * 0.01;
+                    positions[i * 3 + 2] += velocities[i * 3 + 2] * 0.01;
+                    
+                    sparkSystem.material.opacity = 1.0 - life;
+                }
+            }
+            sparkSystem.geometry.attributes.position.needsUpdate = true;
+            sparkSystem.geometry.attributes.startTime.needsUpdate = true;
+        }
+
+        function createDustParticles() {
+            var geometry = new THREE.BufferGeometry();
+            var positions = [];
+            for (var i = 0; i < 500; i++) {
+                positions.push(
+                    (Math.random() - 0.5) * 20,
+                    Math.random() * 5,
+                    (Math.random() - 0.5) * 20
+                );
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            var material = new THREE.PointsMaterial({
+                color: 0x4a3f30,
+                size: 0.03,
+                transparent: true,
+                opacity: 0.3,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            dustSystem = new THREE.Points(geometry, material);
+            scene.add(dustSystem);
+        }
+
+        function updateDustParticles() {
+            if (!dustSystem) return;
+            var delta = clock.getDelta();
+            dustSystem.rotation.y += delta * 0.02;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            updateSparkParticles();
+            updateDustParticles();
+            renderer.render(scene, camera);
+        }
+
+        var loadingOverlay = document.getElementById('loading');
+        var loadbar = document.getElementById('loadbar');
+        var errorMessage = document.getElementById('error-message');
+
+        function hideLoading() {
+            // Create particles only after loading is done
+            createSparkParticles();
+
+            loadingOverlay.style.opacity = '0';
+            setTimeout(function() {
+                loadingOverlay.style.display = 'none';
+            }, 1000);
+        }
+
+        function updateLoading(pct) {
+            loadbar.style.width = pct + '%';
+        }
+
+        function showError() {
+            errorMessage.style.display = 'block';
+            document.getElementById('loading-text').style.display = 'none';
+            document.getElementById('progress-container').style.display = 'none';
+        }
+
+        init();
+    </script>
+
+</body>
+</html>

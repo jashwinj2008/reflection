@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Epic Tale</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel+Decorative&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            /* Abyss-like black with subtle lantern radial glow */
+            background: radial-gradient(circle at center, #1a1005 0%, #050302 60%);
+            background-color: #050302;
+            color: #d4a843;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'IM Fell English', Georgia, serif;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        .line {
+            position: absolute;
+            font-size: 2.2rem;
+            font-style: italic;
+            opacity: 0;
+            transform: translateY(20px);
+            text-shadow: 0 0 15px rgba(212, 168, 67, 0.4);
+            pointer-events: none;
+            transition: opacity 2s ease, transform 2s ease;
+            max-width: 800px;
+            line-height: 1.5;
+        }
+
+        .line.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .line.fade-out {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        .button-wrapper {
+            position: absolute;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            transition: opacity 2s ease, transform 2s ease;
+        }
+
+        .button-wrapper.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .action-btn {
+            font-family: 'Cinzel Decorative', Georgia, serif;
+            font-size: 1.8rem;
+            color: #d4a843;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 15px 30px;
+            outline: none;
+            text-shadow: 0 0 10px rgba(212, 168, 67, 0.4);
+            transition: transform 0.3s ease, text-shadow 0.3s ease;
+            animation: pulse-glow 3s infinite ease-in-out;
+            letter-spacing: 2px;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+            text-shadow: 0 0 25px rgba(212, 168, 67, 0.9), 0 0 45px rgba(212, 168, 67, 0.6);
+        }
+
+        @keyframes pulse-glow {
+            0% { text-shadow: 0 0 10px rgba(212, 168, 67, 0.4); }
+            50% { text-shadow: 0 0 25px rgba(212, 168, 67, 0.8), 0 0 15px rgba(212, 168, 67, 0.5); }
+            100% { text-shadow: 0 0 10px rgba(212, 168, 67, 0.4); }
+        }
+
+        #black-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000;
+            opacity: 0;
+            pointer-events: none;
+            /* Fade entirely to black over 2 seconds */
+            transition: opacity 2s ease;
+            z-index: 100;
+        }
+
+        #black-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="black-overlay"></div>
+
+    <div class="container">
+        <div id="phase1" class="line">| Curiosity . Craft . Comrades |</div>
+        <div id="phase2" class="line">Through storms of syntax and oceans of code...<br>the month-long voyage concludes.</div>
+        <div id="phase3" class="button-wrapper">
+            <button id="openLogbookBtn" class="action-btn">⚓ Open the Logbook ⚓</button>
+        </div>
+    </div>
+
+    <!-- Optional audio effect (uncomment and set src to a path to use a sound effect) -->
+    <!-- <audio id="clickSound" src="assets/click.mp3"></audio> -->
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const phase1 = document.getElementById("phase1");
+            const phase2 = document.getElementById("phase2");
+            const phase3 = document.getElementById("phase3");
+            const btn = document.getElementById("openLogbookBtn");
+            const overlay = document.getElementById("black-overlay");
+            // const clickSound = document.getElementById("clickSound");
+
+            /**
+             * Animation Timeline:
+             * 0.0s : Start Blank
+             * 1.0s : Phase 1 Fades in (travels up)
+             * 3.5s : Phase 1 Linger Ends (2.5s duration) -> Phase 1 Fades out (travels up)
+             * 5.5s : Fade out finishes (2s transition).
+             * 6.0s : Phase 2 Fades in
+             * 9.0s : Phase 2 Linger Ends (3s duration) -> Phase 2 Fades out
+             * 11.0s: Fade out finishes.
+             * 11.5s: Phase 3 Button emerges.
+             */
+
+            // Phase 1 Fade In
+            setTimeout(() => {
+                phase1.classList.add("visible");
+            }, 1000);
+
+            // Phase 1 Fade Out
+            setTimeout(() => {
+                phase1.classList.remove("visible");
+                phase1.classList.add("fade-out");
+            }, 3500);
+
+            // Phase 2 Fade In
+            setTimeout(() => {
+                phase2.classList.add("visible");
+            }, 6000);
+
+            // Phase 2 Fade Out
+            setTimeout(() => {
+                phase2.classList.remove("visible");
+                phase2.classList.add("fade-out");
+            }, 9000);
+
+            // Phase 3 (Button) Fade In
+            setTimeout(() => {
+                phase3.classList.add("visible");
+            }, 11500);
+
+            // Button Click Handler
+            btn.addEventListener("click", () => {
+                // if (clickSound) clickSound.play().catch(e => console.log(e));
+
+                overlay.classList.add("active");
+                
+                // Allow exactly 2s for fade-out before redirecting to index.html
+                // Since this file is in assets/, redirecting up out of the folder.
+                setTimeout(() => {
+                    // Assuming standard structure: root/index.html vs root/assets/intro.html
+                    window.location.href = 'login.html'; 
+                }, 2000); 
+            });
+        });
+    </script>
+</body>
+</html>
